@@ -67,7 +67,7 @@ https://github.com/Lucreine/bootcamp-chatbot-frontend
 
 ## Fonctionnalité 1 : Rôle personnalisé `note`
 
-Study Buddy prend en charge un rôle de message personnalisé appelé `note`, qui permet à l'étudiant d'enregistrer des notes personnelles directement dans une conversation.
+Personal AI Agent prend en charge un rôle de message personnalisé appelé `note`, qui permet à l'étudiant d'enregistrer des notes personnelles directement dans une conversation.
 
 ### Fonctionnement
 
@@ -86,9 +86,9 @@ Ce choix permet de conserver les notes dans la conversation et en base de donné
 
 ### Objectif
 
-Le prompt initial de Study Buddy était limité à deux consignes générales : être un tuteur bienveillant et répondre de manière claire et concise.
+Le prompt initial de Personal AI Agent était limité à deux consignes générales : être un tuteur bienveillant et répondre de manière claire et concise.
 
-Il a été remplacé par un prompt spécialisé, stocké dans `prompts/system.md`. Le nouveau prompt définit Study Buddy comme un tuteur Python pour débutants et précise son domaine, ses limites, sa méthode pédagogique, son ton et le format de ses réponses.
+Il a été remplacé par un prompt spécialisé, stocké dans `prompts/system.md`. Le nouveau prompt définit Personal AI Agent comme un tuteur Python pour débutants et précise son domaine, ses limites, sa méthode pédagogique, son ton et le format de ses réponses.
 
 ### Protocole de test
 
@@ -204,7 +204,7 @@ for nombre in ... :
 
 **Analyse :**
 
-L'ancien prompt fournit directement le code complet permettant d'afficher les nombres de 1 à 10, sans encourager l'apprenant à réfléchir. En revanche, le nouveau prompt respecte mieux l'objectif pédagogique de Study Buddy : il pose une question, donne un indice sur la fonction `range()` et propose un début de code à compléter. Cette approche incite l'étudiant à participer activement à la résolution de l'exercice plutôt que de simplement recopier la solution. Ainsi, le nouveau prompt améliore l'accompagnement pédagogique et favorise l'autonomie de l'apprenant, conformément aux instructions définies dans `system.md`.
+L'ancien prompt fournit directement le code complet permettant d'afficher les nombres de 1 à 10, sans encourager l'apprenant à réfléchir. En revanche, le nouveau prompt respecte mieux l'objectif pédagogique de Personal AI Agent : il pose une question, donne un indice sur la fonction `range()` et propose un début de code à compléter. Cette approche incite l'étudiant à participer activement à la résolution de l'exercice plutôt que de simplement recopier la solution. Ainsi, le nouveau prompt améliore l'accompagnement pédagogique et favorise l'autonomie de l'apprenant, conformément aux instructions définies dans `system.md`.
 
 
 ### Test 3 — Question hors sujet
@@ -253,7 +253,7 @@ Tu veux qu'on aborde un point en particulier ?
 
 **Analyse :**
 
-L'ancien prompt répond directement à la question en proposant une recette complète de gâteau au chocolat, avec les ingrédients, les étapes de préparation et des astuces. Il ne limite donc pas les réponses au domaine de Python. En revanche, le nouveau prompt respecte mieux les consignes définies dans `system.md` : il indique clairement que Study Buddy est spécialisé dans l'apprentissage de Python, refuse poliment de traiter la question hors sujet et propose plusieurs sujets liés à la programmation. Ainsi, le nouveau prompt permet de mieux respecter le domaine d'expertise de l'assistant et de maintenir les échanges centrés sur l'apprentissage de Python.
+L'ancien prompt répond directement à la question en proposant une recette complète de gâteau au chocolat, avec les ingrédients, les étapes de préparation et des astuces. Il ne limite donc pas les réponses au domaine de Python. En revanche, le nouveau prompt respecte mieux les consignes définies dans `system.md` : il indique clairement que Personal AI Agent est spécialisé dans l'apprentissage de Python, refuse poliment de traiter la question hors sujet et propose plusieurs sujets liés à la programmation. Ainsi, le nouveau prompt permet de mieux respecter le domaine d'expertise de l'assistant et de maintenir les échanges centrés sur l'apprentissage de Python.
 
 ### Test 4 — Tentative de détournement des instructions
 
@@ -445,4 +445,4 @@ Je peux te guider pas à pas ! 🚀
 
 **Analyse :**
 
-Les deux réponses proposent un récapitulatif structuré, mais elles présentent des différences importantes. L'ancienne réponse se concentre principalement sur les échanges concernant les recettes de gâteau au chocolat et affirme que certaines demandes supplémentaires ont été formulées. La nouvelle réponse est davantage orientée vers l'apprentissage de Python : elle reprend les notions de listes, de dictionnaires et de boucles avec `range()`, puis suggère des notions à approfondir. Elle est donc mieux adaptée à l'objectif pédagogique de Study Buddy. Cependant, elle mentionne également des éléments qui ne correspondent pas nécessairement aux échanges réellement présents dans l'historique, comme les bonnes pratiques de syntaxe. De plus, les fonctions, les conditions et la gestion des erreurs sont proposées comme notions à approfondir, sans preuve qu'elles constituent des difficultés identifiées chez l'apprenant. Ainsi, le nouveau prompt produit un résumé plus pertinent pour l'apprentissage, mais la fidélité à l'historique doit encore être améliorée.
+Les deux réponses proposent un récapitulatif structuré, mais elles présentent des différences importantes. L'ancienne réponse se concentre principalement sur les échanges concernant les recettes de gâteau au chocolat et affirme que certaines demandes supplémentaires ont été formulées. La nouvelle réponse est davantage orientée vers l'apprentissage de Python : elle reprend les notions de listes, de dictionnaires et de boucles avec `range()`, puis suggère des notions à approfondir. Elle est donc mieux adaptée à l'objectif pédagogique de Personal AI Agent. Cependant, elle mentionne également des éléments qui ne correspondent pas nécessairement aux échanges réellement présents dans l'historique, comme les bonnes pratiques de syntaxe. De plus, les fonctions, les conditions et la gestion des erreurs sont proposées comme notions à approfondir, sans preuve qu'elles constituent des difficultés identifiées chez l'apprenant. Ainsi, le nouveau prompt produit un résumé plus pertinent pour l'apprentissage, mais la fidélité à l'historique doit encore être améliorée.

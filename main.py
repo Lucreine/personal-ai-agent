@@ -15,6 +15,7 @@ from database.models import Conversation, Message
 from pathlib import Path
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from agent_tools import TOOLS, search_web
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 
@@ -45,7 +46,7 @@ NOTIFICATION_EVERY = 10  # a notification each time the dialogue reaches a multi
 NOTIFICATION_TEXT = "Notification système : Une dizaine de messages écrits."
 
 SYSTEM_PROMPT = (
-    "Tu es Study Buddy, un tuteur bienveillant pour les étudiants."
+    "Tu es Personal AI Agent, un tuteur bienveillant pour les étudiants."
     "Réponds aux questions de manière claire et concise."
 )
 
@@ -55,17 +56,7 @@ ALLOWED_MODELS = [
     if model.strip()
 ]
 
-if len(ALLOWED_MODELS) < 2:
-    raise RuntimeError(
-        "ALLOWED_MODELS doit contenir au moins deux modèles."
-    )
-
-if MODEL not in ALLOWED_MODELS:
-    raise RuntimeError(
-        "RODIUMAI_MODEL doit appartenir à ALLOWED_MODELS."
-    )
-
-app = FastAPI(title="Study Buddy Chatbot")
+app = FastAPI(title="Personal AI Agent Chatbot")
 
 
 class ConversationResponse(BaseModel):
@@ -200,6 +191,16 @@ def create_note(conversation_id: int, req: NoteRequest, db: Session = Depends(ge
         created_at=note.created_at,
     )
 
+def execute_tool(name: str, arguments: dict) -> str:
+
+    if name == "search_web":
+        return search_web(
+            query=arguments["query"],
+            topic=arguments.get("topic", "general"),
+            time_range=arguments.get("time_range"),
+        )
+
+    raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 
 @app.post("/chat")
 def chat(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
@@ -230,123 +231,232 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
 
     def send_event(data: dict) -> str:
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-
+        
     def generate():
         parts = []
         completed = False
-        chat_completion="/chat/completions"
+        max_tool_rounds = 4
+
+        def request_headers():
+            return {
+                "Authorization": f"Bearer {RODIUMAI_API_KEY}",
+                "Content-Type": "application/json",
+            }
 
         try:
-            with httpx.stream(
-                "POST",
-                f"{RODIUMAI_URL.rstrip('/')}{chat_completion}",
-                headers={
-                    "Authorization": f"Bearer {RODIUMAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": req.model,
-                    "messages": messages,
-                    "max_tokens": 512,
-                    "stream": True,
-                },
-                timeout=httpx.Timeout(60.0, connect=10.0),
-            ) as response:
-                response.raise_for_status()
+            for round_number in range(max_tool_rounds + 1):
+                tool_calls = {}
+                round_parts = []
+                round_completed = False
 
-                # Read flux SSE sended by RodiumAI.
-                for line in response.iter_lines():
-                    if not line.startswith("data:"):
-                        continue
+                with httpx.stream(
+                    "POST",
+                    f"{RODIUMAI_URL.rstrip('/')}/chat/completions",
+                    headers=request_headers(),
+                    json={
+                        "model": req.model,
+                        "messages": messages,
+                        "tools": TOOLS,
+                        "tool_choice": "auto",
+                        "max_tokens": 1024,
+                        "stream": True,
+                    },
+                    timeout=httpx.Timeout(90.0, connect=10.0),
+                ) as response:
+                    response.raise_for_status()
 
-                    data = line[len("data:"):].strip()
+                    for line in response.iter_lines():
+                        if not line.startswith("data:"):
+                            continue
 
-                    if data == "[DONE]":
-                        completed = True
-                        break
+                        data = line[len("data:"):].strip()
 
-                    try:
-                        payload = json.loads(data)
-                    except json.JSONDecodeError:
-                        continue
+                        if data == "[DONE]":
+                            round_completed = True
+                            break
 
-                    choices = payload.get("choices", [])
-                    if not choices:
-                        continue
+                        try:
+                            payload = json.loads(data)
+                        except json.JSONDecodeError:
+                            continue
 
-                    delta = choices[0].get("delta", {})
-                    token = delta.get("content")
+                        choices = payload.get("choices", [])
+                        if not choices:
+                            continue
 
-                    if isinstance(token, str) and token:
+                        delta = choices[0].get("delta", {})
+
+                        token = delta.get("content")
+                        if isinstance(token, str) and token:
+                            round_parts.append(token)
+
+                        for call in delta.get("tool_calls", []) or []:
+                            index = call.get("index", 0)
+
+                            if index not in tool_calls:
+                                tool_calls[index] = {
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "",
+                                        "arguments": "",
+                                    },
+                                }
+
+                            current = tool_calls[index]
+
+                            if call.get("id"):
+                                current["id"] = call["id"]
+
+                            if call.get("type"):
+                                current["type"] = call["type"]
+
+                            function = call.get("function", {})
+
+                            if function.get("name"):
+                                current["function"]["name"] += function["name"]
+
+                            if function.get("arguments"):
+                                current["function"]["arguments"] += (
+                                    function["arguments"]
+                                )
+
+                if not round_completed:
+                    raise RuntimeError(
+                        "Le flux RodiumAI s'est terminé sans [DONE]."
+                    )
+
+                calls = [
+                    tool_calls[index]
+                    for index in sorted(tool_calls)
+                ]
+
+                if not calls:
+                    for token in round_parts:
                         parts.append(token)
                         yield send_event({
                             "type": "token",
                             "content": token,
                         })
 
-            # Closed connection without [DONE] is not a success.
-            if not completed:
-                db.rollback()
-                yield send_event({
-                    "type": "error",
-                    "message": "Model stream closed before completion.",
-                })
-                return
+                    completed = True
+                    break
 
-            # Do not save anything until the generation process has completed normally. 
+                # L'assistant demande un ou plusieurs outils.
+                messages.append({
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": calls,
+                })
+
+                for call in calls:
+                    call_id = call.get("id", "")
+                    function = call.get("function", {})
+                    name = function.get("name", "")
+
+                    try:
+                        arguments = json.loads(
+                            function.get("arguments") or "{}"
+                        )
+
+                        if not isinstance(arguments, dict):
+                            raise ValueError(
+                                "Les arguments de l'outil doivent être un objet."
+                            )
+
+                        result = execute_tool(name, arguments)
+
+                    except Exception as exc:
+                        print(
+                            "Erreur outil:",
+                            name,
+                            type(exc).__name__,
+                            str(exc),
+                        )
+                        result = json.dumps({
+                            "error": (
+                                "L'outil n'a pas pu être exécuté. "
+                                "Explique ce problème à l'utilisateur "
+                                "sans inventer de résultats."
+                            )
+                        }, ensure_ascii=False)
+
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "content": result,
+                    })
+
+            if not completed:
+                raise RuntimeError(
+                    "Nombre maximal de cycles de Tool Calling atteint."
+                )
+
             reply = "".join(parts)
 
-            # Only record the turn once the call succeeded, so a failure doesn't leave a dangling user message.
             db.add_all([
-                Message(conversation_id=req.conversation_id, seq=next_seq, role="user", content=req.message),
-                Message(conversation_id=req.conversation_id, seq=next_seq + 1, role="assistant", content=reply, model=req.model),
+                Message(
+                    conversation_id=req.conversation_id,
+                    seq=next_seq,
+                    role="user",
+                    content=req.message,
+                ),
+                Message(
+                    conversation_id=req.conversation_id,
+                    seq=next_seq + 1,
+                    role="assistant",
+                    content=reply,
+                    model=req.model,
+                ),
             ])
 
-            # Count only the dialogue (user + assistant): counting notifications too would shift the total
-            # off the multiples of 10 for good after the first one.
             notification = None
             if (len(history) + 2) % NOTIFICATION_EVERY == 0:
                 notification = NOTIFICATION_TEXT
                 db.add(Message(
-                    conversation_id=req.conversation_id, seq=next_seq + 2, role=NOTIFICATION_ROLE, content=notification
+                    conversation_id=req.conversation_id,
+                    seq=next_seq + 2,
+                    role=NOTIFICATION_ROLE,
+                    content=notification,
                 ))
 
             try:
                 db.commit()
             except IntegrityError:
-                # Another request already wrote these seq numbers in this conversation while we waited for the LLM.
                 db.rollback()
-                raise HTTPException(
-                    status_code=409, detail="The conversation was updated concurrently, please retry."
-                )
+                yield send_event({
+                    "type": "error",
+                    "message": (
+                        "La conversation a été modifiée simultanément. "
+                        "Réessaie."
+                    ),
+                })
+                return
 
-            # The notification is sent only after the data has been successfully saved.
             if notification:
                 yield send_event({
                     "type": "notification",
                     "content": notification,
                 })
 
-            # Signal the success to the frontend after the commit.
             yield "data: [DONE]\n\n"
 
         except GeneratorExit:
-            # The client has closed the stream.
             db.rollback()
             raise
 
         except Exception as exc:
             db.rollback()
             print(
-                "Error while streaming RodiumAI:",
+                "Erreur pendant le traitement de la conversation:",
                 type(exc).__name__,
                 str(exc),
             )
             yield send_event({
                 "type": "error",
                 "message": (
-                    "The generation failed. "
-                    "The response was not recorded as complete."
+                    "La génération a échoué. "
+                    "La réponse n'a pas été enregistrée comme terminée."
                 ),
             })
 
