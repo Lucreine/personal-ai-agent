@@ -129,8 +129,78 @@ CALENDAR_TOOLS = [
     }
 ]
 
+EMAIL_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "prepare_email",
+            "description": (
+                "Rédige un brouillon d'email sans l'envoyer. "
+                "Utilise cet outil lorsque l'utilisateur demande de rédiger "
+                "ou de préparer un email. Retourne le destinataire, l'objet "
+                "et le contenu pour présentation à l'utilisateur."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "description": "Adresse email du destinataire."
+                    },
+                    "subject": {
+                        "type": "string",
+                        "description": "Objet de l'email."
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Contenu complet de l'email."
+                    }
+                },
+                "required": ["to", "subject", "body"],
+                "additionalProperties": False
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_email",
+            "description": (
+                "Envoie directement un email via SMTP lorsque l'utilisateur "
+                "demande explicitement de l'envoyer. Peut être utilisé pour "
+                "envoyer une réponse ou un résumé obtenu avec d'autres outils, "
+                "par exemple Google Calendar. N'envoie jamais un email lorsque "
+                "l'utilisateur demande uniquement de le rédiger ou de le "
+                "préparer. Si le destinataire, l'objet ou le contenu nécessaire "
+                "est inconnu, demande les informations manquantes avant l'envoi. "
+                "N'invente jamais une adresse email."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to": {
+                        "type": "string",
+                        "description": "Adresse email du destinataire."
+                    },
+                    "subject": {
+                        "type": "string",
+                        "description": "Objet de l'email."
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Contenu complet du message à envoyer."
+                    }
+                },
+                "required": ["to", "subject", "body"],
+                "additionalProperties": False
+            }
+        }
+    }
+]
+
 TOOLS.extend(WEATHER_TOOLS)
 TOOLS.extend(CALENDAR_TOOLS)
+TOOLS.extend(EMAIL_TOOLS)
 
 def search_web( query: str, topic: str = "general", time_range: str | None = None ) -> str:
     """Effectue une recherche Internet et renvoie les résultats avec leurs sources."""

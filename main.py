@@ -24,12 +24,12 @@ from agent_tools import (
 )
 from fastapi import HTTPException, Query
 from fastapi.responses import RedirectResponse, JSONResponse
-
 from google_calendar import (
     get_google_auth_url,
     finish_google_auth,
     list_upcoming_events
 )
+from email_service import send_email_smtp
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 
@@ -205,7 +205,7 @@ def create_note(conversation_id: int, req: NoteRequest, db: Session = Depends(ge
         created_at=note.created_at,
     )
 
-def execute_tool(name: str, arguments: dict) -> str:
+def execute_tool(name: str, arguments: dict, conversation_id: str = "", user_message: str ="") -> str:
 
     if name == "search_web":
         return search_web(
@@ -241,6 +241,50 @@ def execute_tool(name: str, arguments: dict) -> str:
             ensure_ascii=False,
         )
 
+    
+    if name == "prepare_email":
+        to = arguments.get("to", "").strip()
+        subject = arguments.get("subject", "").strip()
+        body = arguments.get("body", "").strip()
+
+        if not to or not subject or not body:
+            raise ValueError(
+                "Le destinataire, l'objet et le contenu sont obligatoires."
+            )
+
+        return json.dumps({
+            "status": "draft",
+            "to": to,
+            "subject": subject,
+            "body": body,
+            "sent": False,
+            "message": "Brouillon préparé, aucun email envoyé."
+        }, ensure_ascii=False)
+
+    if name == "send_email":
+        print("Outil send_email appelé")
+
+        to = arguments.get("to", "").strip()
+        subject = arguments.get("subject", "").strip()
+        body = arguments.get("body", "").strip()
+
+        if not to or not subject or not body:
+            raise ValueError("Destinataire, objet ou contenu manquant")
+
+        print("Paramètres de l'email présents")
+
+        result = send_email_smtp(
+            to=to,
+            subject=subject,
+            body=body,
+        )
+
+        print(f"Résultat SMTP : success={result.get('success')}")
+
+        return json.dumps(
+            {**result, "sent": result.get("success", False)},
+            ensure_ascii=False,
+        )
     raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 
 @app.post("/chat")
@@ -405,7 +449,12 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
                                 "Les arguments de l'outil doivent être un objet."
                             )
 
-                        result = execute_tool(name, arguments)
+                        result = execute_tool(
+                            name,
+                            arguments,
+                            conversation_id=str(req.conversation_id),
+                            user_message=content,
+                        )
 
                     except Exception as exc:
                         print(
@@ -415,10 +464,13 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
                             str(exc),
                         )
                         result = json.dumps({
+                            "success": False,
+                            "sent": False,
                             "error": (
                                 "L'outil n'a pas pu être exécuté. "
                                 "Explique ce problème à l'utilisateur "
                                 "sans inventer de résultats."
+                                if name == "send_email" else "L'outil a échoué."
                             )
                         }, ensure_ascii=False)
 
