@@ -22,6 +22,14 @@ from agent_tools import (
     get_weather_forecast,
     compare_weather,
 )
+from fastapi import HTTPException, Query
+from fastapi.responses import RedirectResponse, JSONResponse
+
+from google_calendar import (
+    get_google_auth_url,
+    finish_google_auth,
+    list_upcoming_events
+)
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 
@@ -214,6 +222,24 @@ def execute_tool(name: str, arguments: dict) -> str:
 
     if name == "compare_weather":
         return compare_weather(cities=arguments["cities"])
+
+    if name == "get_calendar_events":
+        days = arguments.get("days", 1)
+
+        if not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= 90:
+            raise ValueError("Le nombre de jours doit être compris entre 1 et 90.")
+
+        events = list_upcoming_events(days=days)
+
+        return json.dumps(
+            {
+                "success": True,
+                "days": days,
+                "events_count": len(events),
+                "events": events,
+            },
+            ensure_ascii=False,
+        )
 
     raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 
@@ -490,3 +516,47 @@ def get_models():
         "models": ALLOWED_MODELS,
         "default": MODEL,
     }
+
+@app.get("/auth/google/login")
+def google_login():
+    """Redirige l'utilisateur vers Google pour autoriser Calendar."""
+    try:
+        authorization_url = get_google_auth_url()
+        return RedirectResponse(url=authorization_url)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Impossible de démarrer OAuth : {exc}",
+        )
+
+
+@app.get("/auth/google/callback")
+def google_callback(
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+):
+    """Reçoit le retour de Google après l'autorisation."""
+    if error:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Autorisation Google refusée : {error}",
+        )
+
+    if not code or not state:
+        raise HTTPException(
+            status_code=400,
+            detail="Code ou état OAuth manquant.",
+        )
+
+    try:
+        finish_google_auth(code, state)
+        return JSONResponse({
+            "success": True,
+            "message": "Google Calendar est connecté.",
+        })
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Échec de l'autorisation Google : {exc}",
+        )

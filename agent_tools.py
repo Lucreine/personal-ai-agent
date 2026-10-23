@@ -104,7 +104,33 @@ WEATHER_TOOLS = [
     }
 ]
 
+CALENDAR_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_calendar_events",
+            "description": (
+                "Consulter les événements Google Calendar de l'utilisateur "
+                "sur les prochains jours. Utiliser cet outil pour répondre "
+                "aux questions sur son agenda et ses programmes."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Nombre de jours à consulter, de 1 à 90."
+                    }
+                },
+                "required": ["days"],
+                "additionalProperties": False
+            }
+        }
+    }
+]
+
 TOOLS.extend(WEATHER_TOOLS)
+TOOLS.extend(CALENDAR_TOOLS)
 
 def search_web( query: str, topic: str = "general", time_range: str | None = None ) -> str:
     """Effectue une recherche Internet et renvoie les résultats avec leurs sources."""

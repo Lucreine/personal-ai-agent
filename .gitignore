@@ -14,3 +14,6 @@ wheels/
 
 # SQLite database
 *.db
+
+credentials.json
+token.json
