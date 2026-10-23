@@ -15,7 +15,13 @@ from database.models import Conversation, Message
 from pathlib import Path
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from agent_tools import TOOLS, search_web
+from agent_tools import (
+    TOOLS,
+    search_web,
+    get_current_weather,
+    get_weather_forecast,
+    compare_weather,
+)
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 
@@ -199,6 +205,15 @@ def execute_tool(name: str, arguments: dict) -> str:
             topic=arguments.get("topic", "general"),
             time_range=arguments.get("time_range"),
         )
+
+    if name == "get_current_weather":
+        return get_current_weather(city=arguments["city"])
+
+    if name == "get_weather_forecast":
+        return get_weather_forecast(city=arguments["city"])
+
+    if name == "compare_weather":
+        return compare_weather(cities=arguments["cities"])
 
     raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 
