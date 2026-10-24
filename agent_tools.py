@@ -198,9 +198,62 @@ EMAIL_TOOLS = [
     }
 ]
 
+NOTION_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_notion_pages",
+            "description": (
+                "Recherche des pages dans l'espace Notion accessible à "
+                "l'utilisateur. À utiliser pour retrouver des notes, "
+                "documents ou informations par sujet ou mot-clé."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Sujet ou mots-clés à rechercher dans Notion.",
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "description": "Nombre maximum de pages à retourner.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_notion_page_content",
+            "description": (
+                "Lit le contenu textuel d'une page Notion à partir de son ID. "
+                "Utiliser l'ID obtenu grâce à search_notion_pages."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "page_id": {
+                        "type": "string",
+                        "description": "Identifiant de la page Notion à lire.",
+                    },
+                    "max_blocks": {
+                        "type": "integer",
+                        "description": "Nombre maximum de blocs à lire.",
+                    },
+                },
+                "required": ["page_id"],
+            },
+        },
+    },
+]
+
 TOOLS.extend(WEATHER_TOOLS)
 TOOLS.extend(CALENDAR_TOOLS)
 TOOLS.extend(EMAIL_TOOLS)
+TOOLS.extend(NOTION_TOOLS)
 
 def search_web( query: str, topic: str = "general", time_range: str | None = None ) -> str:
     """Effectue une recherche Internet et renvoie les résultats avec leurs sources."""

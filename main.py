@@ -30,6 +30,8 @@ from google_calendar import (
     list_upcoming_events
 )
 from email_service import send_email_smtp
+from notion_service import search_notion_pages, get_notion_page_content
+
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
 
@@ -285,6 +287,19 @@ def execute_tool(name: str, arguments: dict, conversation_id: str = "", user_mes
             {**result, "sent": result.get("success", False)},
             ensure_ascii=False,
         )
+
+    if name == "search_notion_pages":
+        return search_notion_pages(
+            query=arguments["query"],
+            page_size=arguments.get("page_size", 10),
+        )
+
+    if name == "get_notion_page_content":
+        return get_notion_page_content(
+            page_id=arguments["page_id"],
+            max_blocks=arguments.get("max_blocks", 100),
+        )
+
     raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 
 @app.post("/chat")
