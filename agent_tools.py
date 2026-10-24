@@ -126,6 +126,45 @@ CALENDAR_TOOLS = [
                 "additionalProperties": False
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_calendar_event",
+            "description": (
+                "Créer un événement dans le Google Calendar de l'utilisateur. "
+                "Utiliser cet outil lorsqu'il demande explicitement d'ajouter "
+                "ou de planifier un événement. Les dates start et end doivent "
+                "être au format ISO 8601, par exemple 2026-10-25T15:00:00."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "Titre de l'événement."
+                    },
+                    "start": {
+                        "type": "string",
+                        "description": "Date et heure de début au format ISO 8601."
+                    },
+                    "end": {
+                        "type": "string",
+                        "description": "Date et heure de fin au format ISO 8601."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description facultative de l'événement."
+                    },
+                    "timezone": {
+                        "type": "string",
+                        "description": "Fuseau horaire IANA, par exemple Africa/Porto-Novo."
+                    }
+                },
+                "required": ["summary", "start", "end", "timezone"],
+                "additionalProperties": False
+            }
+        }
     }
 ]
 

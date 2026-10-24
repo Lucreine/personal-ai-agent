@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 import json
@@ -27,7 +28,8 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from google_calendar import (
     get_google_auth_url,
     finish_google_auth,
-    list_upcoming_events
+    list_upcoming_events,
+    create_calendar_event
 )
 from email_service import send_email_smtp
 from notion_service import search_notion_pages, get_notion_page_content
@@ -128,7 +130,27 @@ def build_llm_history(rows: list[Message]) -> list[dict]:
 
 
 def load_system_prompt() -> str:
-    return PROMPT_PATH.read_text(encoding="utf-8").strip()
+    prompt = PROMPT_PATH.read_text(encoding="utf-8").strip()
+
+    timezone = ZoneInfo(
+        os.getenv("CALENDAR_TIMEZONE", "Africa/Porto-Novo")
+    )
+    now = datetime.now(timezone)
+
+    date_context = (
+        "\n\nCONTEXTE TEMPOREL ACTUEL :\n"
+        f"- Date actuelle : {now.strftime('%Y-%m-%d')}\n"
+        f"- Jour de la semaine : {now.strftime('%A')}\n"
+        f"- Heure locale : {now.strftime('%H:%M:%S')}\n"
+        "- Fuseau horaire : Africa/Porto-Novo\n"
+        "- Pour interpréter « aujourd'hui », « demain » ou "
+        "« après-demain », utilise cette date comme référence.\n"
+        "- N'invente jamais une date. Calcule précisément la date "
+        "correspondante avant d'appeler un outil de calendrier.\n"
+    )
+
+    return prompt + date_context
+
 
 
 @app.post("/conversations", status_code=201)
@@ -244,7 +266,44 @@ def execute_tool(name: str, arguments: dict, conversation_id: str = "", user_mes
             ensure_ascii=False,
         )
 
-    
+    if name == "create_calendar_event":
+        summary = arguments.get("summary", "").strip()
+        start = arguments.get("start", "").strip()
+        end = arguments.get("end", "").strip()
+        description = arguments.get("description", "")
+        timezone = arguments.get(
+            "timezone",
+            "Africa/Porto-Novo",
+        )
+
+        if not summary or not start or not end:
+            raise ValueError(
+                "Le titre, la date de début et la date de fin sont obligatoires."
+            )
+
+        event = create_calendar_event(
+            summary=summary,
+            start=start,
+            end=end,
+            description=description,
+            timezone=timezone,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Événement créé avec succès.",
+                "event": {
+                    "id": event.get("id"),
+                    "summary": event.get("summary"),
+                    "start": event.get("start"),
+                    "end": event.get("end"),
+                    "htmlLink": event.get("htmlLink"),
+                },
+            },
+            ensure_ascii=False,
+        )
+
     if name == "prepare_email":
         to = arguments.get("to", "").strip()
         subject = arguments.get("subject", "").strip()
