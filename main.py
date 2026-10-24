@@ -31,6 +31,7 @@ from google_calendar import (
 )
 from email_service import send_email_smtp
 from notion_service import search_notion_pages, get_notion_page_content
+from google_drive_service import search_drive_files, read_drive_file
 
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "system.md"
@@ -299,6 +300,18 @@ def execute_tool(name: str, arguments: dict, conversation_id: str = "", user_mes
             page_id=arguments["page_id"],
             max_blocks=arguments.get("max_blocks", 100),
         )
+
+    if name == "search_drive_files":
+        return search_drive_files(
+            query=arguments["query"],
+            page_size=arguments.get("page_size", 10),
+        )
+
+    if name == "read_drive_file":
+        return read_drive_file(
+            file_id=arguments["file_id"],
+        )
+
 
     raise ValueError(f"Outil inconnu ou non autorisé : {name}")
 

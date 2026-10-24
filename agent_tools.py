@@ -250,10 +250,60 @@ NOTION_TOOLS = [
     },
 ]
 
+DRIVE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_drive_files",
+            "description": (
+                "Recherche des fichiers dans Google Drive par nom ou mots-clés. "
+                "Retourne les noms, identifiants, types, dates de modification "
+                "et liens. Utilise cet outil pour retrouver un document."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Nom ou mots-clés du fichier à rechercher.",
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "description": "Nombre maximum de fichiers à retourner.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_drive_file",
+            "description": (
+                "Lit le contenu d'un Google Doc ou d'un fichier textuel "
+                "Google Drive à partir de son ID obtenu par la recherche. "
+                "Utilise ensuite ce contenu pour résumer ou répondre aux questions."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_id": {
+                        "type": "string",
+                        "description": "Identifiant du fichier Google Drive.",
+                    },
+                },
+                "required": ["file_id"],
+            },
+        },
+    },
+]
+
 TOOLS.extend(WEATHER_TOOLS)
 TOOLS.extend(CALENDAR_TOOLS)
 TOOLS.extend(EMAIL_TOOLS)
 TOOLS.extend(NOTION_TOOLS)
+TOOLS.extend(DRIVE_TOOLS)
 
 def search_web( query: str, topic: str = "general", time_range: str | None = None ) -> str:
     """Effectue une recherche Internet et renvoie les résultats avec leurs sources."""

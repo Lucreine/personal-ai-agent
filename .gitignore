@@ -16,4 +16,5 @@ wheels/
 *.db
 
 credentials.json
+credential.json
 token.json
