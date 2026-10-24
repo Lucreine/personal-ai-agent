@@ -348,7 +348,7 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)) -> StreamingResponse:
     def generate():
         parts = []
         completed = False
-        max_tool_rounds = 4
+        max_tool_rounds = 8
 
         def request_headers():
             return {

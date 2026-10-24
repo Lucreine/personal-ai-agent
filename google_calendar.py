@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 
 BASE_DIR = Path(__file__).resolve().parent
 CREDENTIALS_FILE = BASE_DIR / "credentials.json"
-TOKEN_FILE = BASE_DIR / "token.json"
+TOKEN_FILE = BASE_DIR / "calendar_token.json"
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
@@ -47,7 +47,6 @@ def get_google_auth_url():
     authorization_url, state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
-        include_granted_scopes="true",
     )
 
     OAUTH_FLOWS[state] = flow
@@ -107,7 +106,12 @@ def list_upcoming_events(days: int = 7, max_results: int = 20):
     service = get_calendar_service()
     timezone = ZoneInfo(DEFAULT_TIMEZONE)
     now = datetime.now(timezone)
-    end = now + timedelta(days=days)
+    end_date = now.date() + timedelta(days=days + 1)
+    end = datetime.combine(
+        end_date,
+        datetime.min.time(),
+        tzinfo=timezone,
+    )
 
     response = service.events().list(
         calendarId="primary",
